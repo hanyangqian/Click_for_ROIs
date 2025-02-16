@@ -1,6 +1,7 @@
 import cv2
 from PIL import ImageGrab
 import numpy as np
+import pytesseract
 
 # 全局变量
 drawing = False  # 是否正在绘制
@@ -35,10 +36,14 @@ def select_roi(event, x, y, flags, param):
         # 提取 ROI
         (x1, y1), (x2, y2) = roi_coords
         roi = image[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
-
-        # 保存 ROI
-        cv2.imwrite("roi.jpg", roi)
-        print(f"ROI 已保存为 roi.jpg (区域: {roi_coords})")
+        
+        # 将 ROI 转换为灰度图像（Tesseract 对灰度图像识别效果更好）
+        roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        
+        # 使用 pytesseract 识别文字
+        text = pytesseract.image_to_string(roi_gray, lang='chi_sim')  # 使用简体中文模型
+        print("识别结果：")
+        print(text)
 
         # 重置 ROI 坐标
         roi_coords = []

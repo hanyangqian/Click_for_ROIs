@@ -1,68 +1,78 @@
 import cv2
 from PIL import ImageGrab
+import numpy as np
 
-global img
-global point1, point2
-
-
-def on_mouse(event, x, y, flags, param):
-    global img, point1, point2
-    img2 = img.copy()
-    if event == cv2.EVENT_LBUTTONDOWN:  # 左键点击
-        point1 = (x, y)
-        cv2.circle(img2, point1, 1, (0, 255, 0), 1)
-        cv2.imshow("image", img2)
-
-    elif event == cv2.EVENT_MOUSEMOVE and (
-        flags & cv2.EVENT_FLAG_LBUTTON
-    ):  # 移动鼠标，左键拖拽
-        cv2.rectangle(
-            img2, point1, (x, y), (255, 0, 0), 1
-        )  # 需要确定的就是矩形的两个点（左上角与右下角），颜色红色，线的类型（不设置就默认）。
-        cv2.imshow("image", img2)
-
-    elif event == cv2.EVENT_LBUTTONUP:  # 左键释放
-        point2 = (x, y)
-        cv2.rectangle(
-            img2, point1, point2, (0, 0, 255), 2
-        )  # 需要确定的就是矩形的两个点（左上角与右下角），颜色蓝色，线的类型（不设置就默认）。
-        cv2.imshow("image", img2)
-        min_x = min(point1[0], point2[0])
-        min_y = min(point1[1], point2[1])
-        width = abs(point1[0] - point2[0])
-        height = abs(point1[1] - point2[1])
-        cut_img = img[min_y : min_y + height, min_x : min_x + width]
-
-        # 保存截取图像
-        # cv2.imwrite("copy.jpg", cut_img)
+# 全局变量
+drawing = False  # 是否正在绘制
+roi_coords = []  # 存储 ROI 的坐标
+image = None  # 原始图像
+image_copy = None  # 用于绘制的图像副本
 
 
-def main():
-    global img
-    img = cv2.imread("screenshot.png")
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", on_mouse)
-    cv2.imshow("image", img)
-    cv2.waitKey(0)
+# 鼠标回调函数
+def select_roi(event, x, y, flags, param):
+    global drawing, roi_coords, image_copy
 
+    # 左键按下：开始绘制
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawing = True
+        roi_coords = [(x, y)]  # 记录起始点
 
-if __name__ == "__main__":
-    # 定义截取区域的坐标 (left, top, right, bottom)
-    # 例如：截取从 (100, 100) 到 (500, 500) 的区域
-    bbox = (1780, 720, 2560, 1440)
+    # 鼠标移动：动态绘制矩形框
+    elif event == cv2.EVENT_MOUSEMOVE:
+        if drawing:
+            # 重置图像为原始状态
+            image_copy = image.copy()
+            # 动态绘制矩形框
+            cv2.rectangle(image_copy, roi_coords[0], (x, y), (0, 255, 0), 2)
+            cv2.imshow("Select ROI", image_copy)
 
-    # 截取指定区域
-    screenshot = ImageGrab.grab(bbox=bbox)
+    # 左键释放：结束绘制并保存 ROI
+    elif event == cv2.EVENT_LBUTTONUP:
+        drawing = False
+        roi_coords.append((x, y))  # 记录结束点
 
-    # 保存截图
-    screenshot.save("screenshot.png")
+        # 提取 ROI
+        (x1, y1), (x2, y2) = roi_coords
+        roi = image[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
+
+        # 保存 ROI
+        cv2.imwrite("roi.jpg", roi)
+        print(f"ROI 已保存为 roi.jpg (区域: {roi_coords})")
+
+        # 重置 ROI 坐标
+        roi_coords = []
+
+# 定义截取区域的坐标 (left, top, right, bottom)
+# 例如：截取从 (1780, 720) 到 (2560, 1440) 的区域
+bbox = (1780, 720, 2560, 1440)
+
+# 截取屏幕并转换为 OpenCV 格式
+screenshot = ImageGrab.grab(bbox=bbox)
+image = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+# 加载图像（或截取屏幕）
+if image is None:
+    print("图像加载失败，请检查路径！")
+    exit()
     
-    # 读取图片
-    img = cv2.imread("screenshot.png")
+# 创建图像副本
+image_copy = image.copy()
     
-    # 鼠标截取操作
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", on_mouse)
-    cv2.imshow("image", img)
-    cv2.waitKey(0)
+# 创建窗口并绑定鼠标回调函数
+cv2.namedWindow("Select ROI")
+cv2.setMouseCallback("Select ROI", select_roi)
+
+# 主循环
+while True:
+    cv2.imshow("Select ROI", image_copy)
+    key = cv2.waitKey(1) & 0xFF
+
+    # 按下 ESC 键退出 (ASCII 码为 27)
+    if key == 27:  # ESC 键
+        break
+
+# 释放资源
+cv2.destroyAllWindows()
+
     

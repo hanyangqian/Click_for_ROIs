@@ -1,4 +1,5 @@
 import cv2
+from PIL import ImageGrab
 
 global img
 global point1, point2
@@ -31,12 +32,14 @@ def on_mouse(event, x, y, flags, param):
         width = abs(point1[0] - point2[0])
         height = abs(point1[1] - point2[1])
         cut_img = img[min_y : min_y + height, min_x : min_x + width]
-        cv2.imwrite("copy.jpg", cut_img)
+
+        # 保存截取图像
+        # cv2.imwrite("copy.jpg", cut_img)
 
 
 def main():
     global img
-    img = cv2.imread("dog.jpg")
+    img = cv2.imread("screenshot.png")
     cv2.namedWindow("image")
     cv2.setMouseCallback("image", on_mouse)
     cv2.imshow("image", img)
@@ -44,4 +47,22 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # 定义截取区域的坐标 (left, top, right, bottom)
+    # 例如：截取从 (100, 100) 到 (500, 500) 的区域
+    bbox = (1780, 720, 2560, 1440)
+
+    # 截取指定区域
+    screenshot = ImageGrab.grab(bbox=bbox)
+
+    # 保存截图
+    screenshot.save("screenshot.png")
+    
+    # 读取图片
+    img = cv2.imread("screenshot.png")
+    
+    # 鼠标截取操作
+    cv2.namedWindow("image")
+    cv2.setMouseCallback("image", on_mouse)
+    cv2.imshow("image", img)
+    cv2.waitKey(0)
+    
